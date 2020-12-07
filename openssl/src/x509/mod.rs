@@ -1271,7 +1271,35 @@ impl X509CrlBuilder {
             cvt_p(ffi::X509_CRL_new()).map(|p| X509CrlBuilder(X509Crl(p)))
         }
     }
+    /// Set the issuer name.
+    ///
+    /// This corresponds to [`X509_CRL_set_issuer_name`].
+    ///
+    /// [`X509_CRL_set_issuer_name`]: https://www.openssl.org/docs/man1.1.0/man3/X509_CRL_set_issuer_name.html
+    pub fn set_subject_name(&mut self, subject_name: &X509NameRef) -> Result<(), ErrorStack> {
+        unsafe {
+            cvt(ffi::X509_CRL_set_issuer_name(
+                self.0.as_ptr(),
+                subject_name.as_ptr(),
+            ))
+            .map(|_| ())
+        }
+    }
 
+    /// Sets the nextUpdate constraint on the certificate.
+    pub fn set_next_update(&mut self, not_after: &Asn1TimeRef) -> Result<(), ErrorStack> {
+        unsafe { cvt(X509_CRL_set1_nextUpdate(self.0.as_ptr(), not_after.as_ptr())).map(|_| ()) }
+    }
+
+    /// Sets the lastUpdate constraint on the certificate.
+    pub fn set_last_update(&mut self, not_before: &Asn1TimeRef) -> Result<(), ErrorStack> {
+        unsafe { cvt(X509_CRL_set1_lastUpdate(self.0.as_ptr(), not_before.as_ptr())).map(|_| ()) }
+    }
+    /// Appends revoked entry rev to CRL crl.
+    pub fn add_revoke(&mut self, revoke: &X509RevokedRef) -> Result<(), ErrorStack> {
+        unsafe { cvt(X509_CRL_add0_revoked(self.0.as_ptr(),  revoke.as_ptr())).map(|_| ()) }
+    }
+    
     /// Returns the `X509Crl`.
     pub fn build(self) -> X509Crl {
         self.0
@@ -1799,6 +1827,7 @@ cfg_if! {
     if #[cfg(ossl110)] {
         use ffi::{
             X509_CRL_get_issuer, X509_CRL_get0_nextUpdate, X509_CRL_get0_lastUpdate,
+            X509_CRL_set1_lastUpdate, X509_CRL_set1_nextUpdate, X509_CRL_add0_revoked,
             X509_CRL_get_REVOKED,
             X509_REVOKED_get0_revocationDate, X509_REVOKED_get0_serialNumber,
         };
