@@ -1260,7 +1260,7 @@ impl X509ReqRef {
 pub struct X509CrlBuilder(X509Crl);
 
 impl X509CrlBuilder {
-    /// Returns a builder for a certificate request.
+    /// Returns a builder for CRL
     ///
     /// This corresponds to [`X509_CRL_new`].
     ///
@@ -1474,14 +1474,51 @@ impl X509CrlRef {
     }
 }
 
+/// A builder used to construct an `X509Crl`.
+pub struct X509RevokedBuilder(X509Revoked);
+
+impl X509RevokedBuilder {
+    /// Returns a builder for X509Revoked
+    ///
+    /// This corresponds to [`X509_REVOKED_new`].
+    ///
+    ///[`X509_REVOKED_new`]: https://www.openssl.org/docs/man1.1.0/crypto/X5X509_REVOKED_new09_CRL_new.html
+    pub fn new() -> Result<X509RevokedBuilder, ErrorStack> {
+        unsafe {
+            ffi::init();
+            cvt_p(ffi::X509_REVOKED_new()).map(|p| X509RevokedBuilder(X509Revoked(p)))
+        }
+    }
+
+    /// Sets the serial number of the certificate.
+    pub fn set_serial_number(&mut self, serial_number: &Asn1IntegerRef) -> Result<(), ErrorStack> {
+        unsafe {
+            cvt(X509_REVOKED_set_serialNumber(
+                self.0.as_ptr(),
+                serial_number.as_ptr(),
+            ))
+            .map(|_| ())
+        }
+    }
+
+    /// Sets revoketion date of the certificate.
+    pub fn set_revocation_date(&mut self, revocation_date: &Asn1TimeRef) -> Result<(), ErrorStack> {
+        unsafe { cvt(X509_REVOKED_set_revocationDate(self.0.as_ptr(), revocation_date.as_ptr())).map(|_| ()) }
+    }
+
+    /// Returns the `X509Revoked`.
+    pub fn build(self) -> X509Revoked {
+        self.0
+    }
+}
 
 foreign_type_and_impl_send_sync! {
     type CType = ffi::X509_REVOKED;
     fn drop = ffi::X509_REVOKED_free;
 
-    /// An `X509` certificate request.
+    /// An `X509` certificate revoke.
     pub struct X509Revoked;
-    /// Reference to `X509Crl`.
+    /// Reference to `X509Revoked`.
     pub struct X509RevokedRef;
 }
 
@@ -1490,6 +1527,11 @@ impl Stackable for X509Revoked {
 }
 
 impl X509Revoked {
+    /// A builder for `X509Revoked`.
+    pub fn builder() -> Result<X509RevokedBuilder, ErrorStack> {
+        X509RevokedBuilder::new()
+    }
+
     from_der! {
         /// Deserializes a DER-encoded certificate revokation status
         ///
@@ -1830,6 +1872,7 @@ cfg_if! {
             X509_CRL_set1_lastUpdate, X509_CRL_set1_nextUpdate, X509_CRL_add0_revoked,
             X509_CRL_get_REVOKED,
             X509_REVOKED_get0_revocationDate, X509_REVOKED_get0_serialNumber,
+            X509_REVOKED_set_revocationDate, X509_REVOKED_set_serialNumber,
         };
     } else {
         #[allow(bad_style)]
