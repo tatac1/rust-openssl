@@ -1266,7 +1266,14 @@ impl X509CrlBuilder {
     pub fn add_revoke(&mut self, revoke: &X509RevokedRef) -> Result<(), ErrorStack> {
         unsafe { cvt(X509_CRL_add0_revoked(self.0.as_ptr(),  revoke.as_ptr())).map(|_| ()) }
     }
-    
+
+    /// Signs the crl with a private key.
+    pub fn sign<T>(&mut self, key: &PKeyRef<T>, hash: MessageDigest) -> Result<(), ErrorStack>
+    where
+        T: HasPrivate,
+    {
+        unsafe { cvt(X509_CRL_sign(self.0.as_ptr(), key.as_ptr(), hash.as_ptr())).map(|_| ()) }
+    }
     /// Returns the `X509Crl`.
     pub fn build(self) -> X509Crl {
         self.0
@@ -1836,7 +1843,7 @@ cfg_if! {
     if #[cfg(ossl110)] {
         use ffi::{
             X509_CRL_get_issuer, X509_CRL_get0_nextUpdate, X509_CRL_get0_lastUpdate,
-            X509_CRL_set1_lastUpdate, X509_CRL_set1_nextUpdate, X509_CRL_add0_revoked,
+            X509_CRL_set1_lastUpdate, X509_CRL_set1_nextUpdate, X509_CRL_add0_revoked, X509_CRL_sign,
             X509_CRL_get_REVOKED,
             X509_REVOKED_get0_revocationDate, X509_REVOKED_get0_serialNumber,
             X509_REVOKED_set_revocationDate, X509_REVOKED_set_serialNumber,
